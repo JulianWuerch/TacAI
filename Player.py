@@ -1,9 +1,10 @@
 from random import Random
 from typing import List
+from AI import AI
 from Action import Action
 
 from Card import Card
-from Enums import PlayerType
+from Enums import PlayerType, Colors
 from Marble import Marble
 
 
@@ -12,10 +13,12 @@ class Player:
     ownID: int
     playerType: PlayerType = PlayerType.USER
     playedByAI: bool = False
+    ai: AI
     _playerName: str = ""
     _ownHandCards: List[Card] = []
     _signalOpeningCard: bool = False
     _marbles: List[Marble]
+    _playerColor: str = ""
 
 
     def __init__(self, id: int, type: PlayerType, name: str = ""):
@@ -25,12 +28,17 @@ class Player:
 
         self.ownID = id
         self.playerType = type
-        self.playedByAI = not (type == PlayerType.USER)
+        self.playedByAI = type == PlayerType.AI
+        for count, color in enumerate(Colors):
+            if count == id:
+                self._playerColor = color
+                break
 
         if name:
             self._playerName = name
         else:
             self._playerName = f"Bot{id}"
+            self.ai = AI()
 
 
     def playCard(self) -> Action:
@@ -41,17 +49,17 @@ class Player:
         :return: The action the player wants to take.
         """
 
-        if self.isPlayedByAI:
+        if self.isPlayedByAI():
             return self.ai.getAction()
         
         else:
-            print(f"---Player {self.playerName}---")
+            print(f"---Player {self.getName()}---")
             self.printHandCards()
             cardIndex = -1
             print("Play a card")
 
             while cardIndex < 0 or cardIndex >= len(self.getHandCards()):
-                cardIndex = int(print(f"[1-{len(self.getHandCards())}]")) - 1
+                cardIndex = int(input(f"[1-{len(self.getHandCards())}]")) - 1
             
             chosenCard = self.getHandCards().pop(cardIndex)
 
@@ -65,19 +73,19 @@ class Player:
         self.ownID = newID
     
     def getHandCards(self) -> List:
-        return self.ownHandCards
+        return self._ownHandCards
     
     def setHandCards(self, newHandCards) -> None:
-        self.ownHandCards = newHandCards
+        self._ownHandCards = newHandCards
 
     def removeSingleCard(self, cardToRemove) -> None:
-        self.ownHandCards.remove(cardToRemove)
+        self._ownHandCards.remove(cardToRemove)
     
     def getSingleCard(self, index) -> Card:
-        return self.ownHandCards[index]
+        return self._ownHandCards[index]
     
     def addSingleCard(self, cardToAdd) -> None:
-        self.ownHandCards.append(cardToAdd)
+        self._ownHandCards.append(cardToAdd)
 
     def setPlayedByAI(self, playedByAI) -> None:
         self.playedByAI = playedByAI
@@ -109,23 +117,29 @@ class Player:
     def setName(self, name: str) -> None:
         self._playerName = name
 
+    def getPlayerColor(self) -> str:
+        return self._playerColor
+    
+    def setPlayerColor(self, color) -> None:
+        self._playerColor = color
+
 
     def requestTradeCard(self) -> Card:
         """
         Lets the player choose which card he wants to give away in the traiding state at the start of each round.
         """
-
+        random = Random()
         if self.playedByAI:
-            return self.getHandCards().pop(Random.randint(len(self.getHandCards())))
+            return self.getHandCards().pop(random.randint(0, len(self.getHandCards())))
         
         else:
-            print(f"---Player {self.playerName}---")
-            print(f"Trade card to team mate")
+            print(f"{self.getPlayerColor().value}---Player {self._playerName}---{Colors.RESET.value}")
+            print(f"{self.getPlayerColor().value}Trade card to team mate{Colors.RESET.value}")
             self.printHandCards()
 
             cardIndex = -1
             while cardIndex < 0 or cardIndex >= len(self.getHandCards()):
-                cardIndex = int(print(f"[1-{len(self.getHandCards())}]")) - 1
+                cardIndex = int(input(f"[1-{len(self.getHandCards())}]")) - 1
 
             return self.getHandCards().pop(cardIndex)
         
@@ -135,9 +149,11 @@ class Player:
         Prints the hand cards to the player in the console.
         """
 
-        handCards = "- "
+        handCards = str(self.getPlayerColor().value) + "- "
         for card in self.getHandCards():
-            handCards += card.value[0] + " - "
+            handCards += card.type.value[0] + " - "
+
+        handCards += str(Colors.RESET.value)
 
         print(handCards)
     

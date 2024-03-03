@@ -1,8 +1,9 @@
+import math
 from random import Random
 from typing import List
 from Action import Action
 from Card import Card
-from Enums import CardType, PlayerType, match
+from Enums import CardType, Colors, PlayerType, match
 from Marble import Marble
 from Player import Player
 
@@ -20,6 +21,8 @@ class Game:
     drawPile: List[Card] = []
     discardPile: List[Card] = []
     winnerTeam: str = ""
+    printWidth = 19
+    tableMarblePositions = []
     
 
     def __init__(self) -> "Game":
@@ -45,6 +48,21 @@ class Game:
             self.players.append(player)
         
         self.drawPile = self.generateCardDeck()
+
+        self.defineTablePositions()
+        self.printGame()
+
+
+    def defineTablePositions(self):
+        """
+        Calculates the positions of the central circle.
+        """
+
+        angle = 360 / 64
+        for position in range(64):
+            x = int(self.printWidth / 2 - self.printWidth / 2 * math.sin(angle * position))
+            y = int(self.printWidth / 2 - self.printWidth / 2 * math.cos(angle * position))
+            self.tableMarblePositions.append((x, y))
 
 
     def start(self) -> List[Action]:
@@ -153,7 +171,7 @@ class Game:
             givenCards.append(player.requestTradeCard())
 
         for playerIndex, player in enumerate(self.players):
-            player.addSingleCard(givenCards[(playerIndex + self.PLAYER_COUNT / 2) % self.PLAYER_COUNT])
+            player.addSingleCard(givenCards[int((playerIndex + self.PLAYER_COUNT / 2) % self.PLAYER_COUNT)])
 
 
     def playRound(self, round) -> None:
@@ -205,3 +223,100 @@ class Game:
         print(f"---Team {team[0]} won!---")
         for playerIndex in team:
             print(f"Congratulations {self.players[playerIndex].getName()}!")
+
+
+    def printGame(self):
+        
+        for y in range(self.printWidth):
+            line = ""
+            for x in range(self.printWidth):
+                character = "."
+                
+                if x == int(self.printWidth / 2):
+                    if y == self.printWidth - 1:
+                        character = str(self.players[0].getPlayerColor().value) + "O" + str(Colors.RESET.value)
+                        
+                    if y == 0:
+                        character = str(self.players[2].getPlayerColor().value) + "O" + str(Colors.RESET.value)
+
+                    for houseIndex in range(4):
+                        if y == 2 + houseIndex:
+                            marbleChar = "O"
+                            for marble in self.players[2].getMarbles():
+                                if marble.position - 64 == houseIndex:
+                                    marbleChar = str(marble.index)
+                                    
+                            character = self.players[2].getPlayerColor().value + marbleChar + Colors.RESET.value
+
+                        if y == self.printWidth - 3 - houseIndex:
+                            marbleChar = "O"
+                            for marble in self.players[0].getMarbles():
+                                if marble.position - 64 == houseIndex:
+                                    marbleChar = str(marble.index)
+
+                            character = self.players[0].getPlayerColor().value + marbleChar + Colors.RESET.value
+
+                
+                if y == int(self.printWidth / 2):
+                    if x == 0:
+                        character = str(self.players[1].getPlayerColor().value) + "O" + str(Colors.RESET.value)
+
+                    if x == self.printWidth - 1:
+                        character = str(self.players[3].getPlayerColor().value) + "O" + str(Colors.RESET.value)
+                        
+                    for houseIndex in range(4):
+                        if x == 2 + houseIndex:
+                            marbleChar = "O"
+                            for marble in self.players[1].getMarbles():
+                                if marble.position - 64 == houseIndex:
+                                    marbleChar = str(marble.index)
+
+                            character = self.players[1].getPlayerColor().value + marbleChar + Colors.RESET.value
+
+                        if x == self.printWidth - 3 - houseIndex:
+                            marbleChar = "O"
+                            for marble in self.players[3].getMarbles():
+                                if marble.position - 64 == houseIndex:
+                                    marbleChar = str(marble.index)
+
+                            character = self.players[3].getPlayerColor().value + marbleChar + Colors.RESET.value
+                        
+
+                for position in self.tableMarblePositions:
+                    if position == (x, y):
+                        if character == ".":
+                            character = "O"
+
+                for player in self.players:
+                    for marble in player._marbles:
+                        if marble.position > 0 and marble.position <= 64:
+                            if self.tableMarblePositions[marble.position] == (x, y):
+                                character = str(player.getPlayerColor().value)
+                                character += str(marble.index)
+                                character += str(Colors.RESET.value)
+                                break
+                
+                if y == self.printWidth - 2 or y == self.printWidth - 1:
+                    if x == 0 or x == 1:
+                        if self.players[0].getMarbles()[x + (y - self.printWidth + 2) * 2].position == 0:
+                            character = str(self.players[0].getPlayerColor().value) + f"{x + (y - self.printWidth + 2) * 2 + 1}" + str(Colors.RESET.value)
+
+                if y == 0 or y == 1:
+                    if x == 0 or x == 1:
+                        if self.players[1].getMarbles()[x + y * 2].position == 0:
+                            character = str(self.players[1].getPlayerColor().value) + f"{x + y * 2 + 1}" + str(Colors.RESET.value)
+
+                if y == 0 or y == 1:
+                    if x == self.printWidth - 2 or x == self.printWidth - 1:
+                        if self.players[2].getMarbles()[(x - self.printWidth + 2) + y * 2].position == 0:
+                            character = str(self.players[2].getPlayerColor().value) + f"{(x - self.printWidth + 2) + y * 2 + 1}" + str(Colors.RESET.value)
+
+                if y == self.printWidth - 2 or y == self.printWidth - 1:
+                    if x == self.printWidth - 2 or x == self.printWidth - 1:
+                        if self.players[3].getMarbles()[(x - self.printWidth + 2) + (y - self.printWidth + 2) * 2].position == 0:
+                            character = str(self.players[3].getPlayerColor().value) + f"{(x - self.printWidth + 2) + (y - self.printWidth + 2) * 2 + 1}" + str(Colors.RESET.value)
+
+
+                line += character + " "
+            
+            print(line)

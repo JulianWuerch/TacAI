@@ -2,7 +2,7 @@ from Game import Game
 
 
 print("---Wellcome to TAC---")
-toDo = input("Start new game?\n")
+toDo = "yes"
 while toDo == "yes" or toDo == "y":
     playerNames = []
 
