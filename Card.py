@@ -44,7 +44,9 @@ class Card:
             while freeSteps > 0:
                 marble = int(input("Which marble do you want to move?")) - 1
                 steps = int(input(f"How manny steps? {freeSteps} "))
-                moves.append((marble, steps))
+                for _ in range(steps):
+                    moves.append((marble, 1))
+                    
                 freeSteps -= steps
             return Action(ActionType.MOVE, moves)
         elif self.type == CardType.VIII:

@@ -12,6 +12,7 @@ class ActionType(Enum):
     TRIX = 3
     TAC = 4
     BLOCK_NEXT = 5
+    THROW = 6
 
 class CardType(Enum):
     I = ("<--1", 9)

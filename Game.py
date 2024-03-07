@@ -3,7 +3,7 @@ from random import Random
 from typing import List
 from Action import Action
 from Card import Card
-from Enums import CardType, Colors, PlayerType, match
+from Enums import ActionType, CardType, Colors, PlayerType, match
 from Marble import Marble
 from Player import Player
 
@@ -60,8 +60,8 @@ class Game:
 
         angle = 360 / 64
         for position in range(64):
-            x = int(self.printWidth / 2 - self.printWidth / 2 * math.sin(angle * position))
-            y = int(self.printWidth / 2 - self.printWidth / 2 * math.cos(angle * position))
+            x = int(self.printWidth / 2 - self.printWidth / 2 * math.sin(math.radians(angle * position)))
+            y = int(self.printWidth / 2 - self.printWidth / 2 * math.cos(math.radians(angle * position)))
             self.tableMarblePositions.append((x, y))
 
 
@@ -184,13 +184,100 @@ class Game:
         print(f"---Round {round + 1}---")
 
         for player in self.players:
+            if self.actionLog[-1].type == ActionType.BLOCK_NEXT:
+                print("-Warning, you are blocked. Your Card will be discarded-")
+
             action = player.playCard()
-            self.executeAction(action)
+            if not (self.actionLog[-1].type == ActionType.BLOCK_NEXT):
+                self.executeAction(player, action)
+
             self.actionLog.append(action)
+            self.printGame()
 
 
-    def executeAction(self, action: Action) -> None:
-        pass
+    def executeAction(self, player: Player, action: Action) -> None:
+        """
+        Executes an action. Moves marbles and requests additional input from the player if nessecary.
+        Checks if the action is possible and moves marbles acordingly.
+
+        :param player: The player who does the action.
+        :param action: The action to execute.
+        """
+
+        if action.type == ActionType.EXIT:
+            for marble in player.getMarbles():
+                if marble.position == 0:
+                    position = 16 * player.getID() + 1
+                    self.throw(position)
+                    marble.position = position
+                    break
+
+        elif action.type == ActionType.BLOCK_NEXT:
+            pass
+
+        elif action.type == ActionType.TRIX:
+            pos1 = self.players[action.actionData[0][0]].getMarbles()[action.actionData[0][1]].position
+            pos2 = self.players[action.actionData[1][0]].getMarbles()[action.actionData[1][1]].position
+
+            self.players[action.actionData[0][0]].getMarbles()[action.actionData[0][1]].position = pos2
+            self.players[action.actionData[1][0]].getMarbles()[action.actionData[1][1]].position = pos1
+
+        elif action.type == ActionType.MOVE:
+            marblePositions = []
+            for play in self.players:
+                for marb in play.getMarbles():
+                    marblePositions.append(marb.position)
+
+            freeSteps = 0
+            direction = 1
+            if action.actionData[1] < 0:
+                direction = -1
+
+            marble = player.getMarbles()[action.actionData[0]]
+            startPosition = marble.position
+            houseEntrance = player.getID() * 16 + 1
+            for i in range(action.actionData[1] * direction):
+                pos = (startPosition + i * direction + self.RING_PLACES) % self.RING_PLACES + 1
+                if pos in marblePositions:
+                    return
+
+                if pos == houseEntrance and marble.activated:
+                    housePosition = action.actionData[1] * direction - i
+                    for ii in range(1, action.actionData[1] * direction - i):
+                        for marb in player.getMarbles():
+                            if marb.position == self.RING_PLACES + ii:
+                                housePosition = -1
+                                break
+                        
+                    if housePosition > 0:
+                        decision = input("Go in house?")
+                        if decision.lower() == "y":
+                            marble.position = self.RING_PLACES + housePosition
+                            return
+            
+            finalPos = (startPosition + action.actionData[1] + self.RING_PLACES) % self.RING_PLACES + 1
+            self.throw(finalPos)
+            marble.position = finalPos
+
+
+        elif action.type == ActionType.TAC:
+            pass
+
+
+    def throw(self, position: int):
+        """
+        Throws all existing marbles at a certain position.
+        If there is a marble at that position it is send to the house of its player.
+
+        :param position: The position where to throw [1-64].
+        """
+
+        for player in self.players:
+            for marble in player.getMarbles():
+                if marble.position == position:
+                    self.actionLog.append(Action(ActionType.THROW, [player.getID(), position]))
+                    marble.position = 0
+
 
     def checkWinnCondition(self) -> List[int]:
         """
@@ -231,6 +318,8 @@ class Game:
             line = ""
             for x in range(self.printWidth):
                 character = "."
+                if (x, y) in self.tableMarblePositions:
+                    character = "O"
                 
                 if x == int(self.printWidth / 2):
                     if y == self.printWidth - 1:
@@ -280,12 +369,7 @@ class Game:
                                     marbleChar = str(marble.index)
 
                             character = self.players[3].getPlayerColor().value + marbleChar + Colors.RESET.value
-                        
 
-                for position in self.tableMarblePositions:
-                    if position == (x, y):
-                        if character == ".":
-                            character = "O"
 
                 for player in self.players:
                     for marble in player._marbles:
@@ -297,25 +381,24 @@ class Game:
                                 break
                 
                 if y == self.printWidth - 2 or y == self.printWidth - 1:
-                    if x == 0 or x == 1:
-                        if self.players[0].getMarbles()[x + (y - self.printWidth + 2) * 2].position == 0:
-                            character = str(self.players[0].getPlayerColor().value) + f"{x + (y - self.printWidth + 2) * 2 + 1}" + str(Colors.RESET.value)
-
-                if y == 0 or y == 1:
-                    if x == 0 or x == 1:
-                        if self.players[1].getMarbles()[x + y * 2].position == 0:
-                            character = str(self.players[1].getPlayerColor().value) + f"{x + y * 2 + 1}" + str(Colors.RESET.value)
-
-                if y == 0 or y == 1:
                     if x == self.printWidth - 2 or x == self.printWidth - 1:
-                        if self.players[2].getMarbles()[(x - self.printWidth + 2) + y * 2].position == 0:
-                            character = str(self.players[2].getPlayerColor().value) + f"{(x - self.printWidth + 2) + y * 2 + 1}" + str(Colors.RESET.value)
-
+                        if self.players[0].getMarbles()[(x - self.printWidth + 2) + (y - self.printWidth + 2) * 2].position == 0:
+                            character = str(self.players[0].getPlayerColor().value) + f"{(x - self.printWidth + 2) + (y - self.printWidth + 2) * 2 + 1}" + str(Colors.RESET.value)
+                
                 if y == self.printWidth - 2 or y == self.printWidth - 1:
-                    if x == self.printWidth - 2 or x == self.printWidth - 1:
-                        if self.players[3].getMarbles()[(x - self.printWidth + 2) + (y - self.printWidth + 2) * 2].position == 0:
-                            character = str(self.players[3].getPlayerColor().value) + f"{(x - self.printWidth + 2) + (y - self.printWidth + 2) * 2 + 1}" + str(Colors.RESET.value)
+                    if x == 0 or x == 1:
+                        if self.players[1].getMarbles()[x + (y - self.printWidth + 2) * 2].position == 0:
+                            character = str(self.players[1].getPlayerColor().value) + f"{x + (y - self.printWidth + 2) * 2 + 1}" + str(Colors.RESET.value)
 
+                if y == 0 or y == 1:
+                    if x == 0 or x == 1:
+                        if self.players[2].getMarbles()[x + y * 2].position == 0:
+                            character = str(self.players[2].getPlayerColor().value) + f"{x + y * 2 + 1}" + str(Colors.RESET.value)
+
+                if y == 0 or y == 1:
+                    if x == self.printWidth - 2 or x == self.printWidth - 1:
+                        if self.players[3].getMarbles()[(x - self.printWidth + 2) + y * 2].position == 0:
+                            character = str(self.players[3].getPlayerColor().value) + f"{(x - self.printWidth + 2) + y * 2 + 1}" + str(Colors.RESET.value)
 
                 line += character + " "
             
