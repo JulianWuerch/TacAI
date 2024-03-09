@@ -34,8 +34,10 @@ class Game:
         self.actionLog = []
         self.players = []
         for playerIndex in range(self.PLAYER_COUNT):
-            name = input(f"Player {playerIndex + 1} name: ")
-            type = input(f"Player {playerIndex + 1} type: ")
+            #name = input(f"Player {playerIndex + 1} name: ")
+            #type = input(f"Player {playerIndex + 1} type: ")
+            name = playerIndex
+            type = "player"
             print("")
 
             type = match(PlayerType, type)
@@ -60,6 +62,7 @@ class Game:
 
         angle = 360 / 64
         for position in range(64):
+            position = 33 - position
             x = int(self.printWidth / 2 - self.printWidth / 2 * math.sin(math.radians(angle * position)))
             y = int(self.printWidth / 2 - self.printWidth / 2 * math.cos(math.radians(angle * position)))
             self.tableMarblePositions.append((x, y))
@@ -158,7 +161,12 @@ class Game:
         """
         
         for player in self.players:
-            player.setSignalOpeningCard(CardType.I in player.getHandCards() or CardType.XIII in player.getHandCards())
+            player.setSignalOpeningCard(False)
+            for card in player.getHandCards():
+                if card.type == CardType.I or card.type == CardType.XIII:
+                    player.setSignalOpeningCard(True)
+
+            print(f"Player {player.getName()} can open?", player.signalOpeningCardState())
                 
 
     def tradeCards(self) -> None:
@@ -184,11 +192,11 @@ class Game:
         print(f"---Round {round + 1}---")
 
         for player in self.players:
-            if self.actionLog[-1].type == ActionType.BLOCK_NEXT:
+            if len(self.actionLog) > 0 and self.actionLog[-1].type == ActionType.BLOCK_NEXT:
                 print("-Warning, you are blocked. Your Card will be discarded-")
 
             action = player.playCard()
-            if not (self.actionLog[-1].type == ActionType.BLOCK_NEXT):
+            if len(self.actionLog) == 0 or not (len(self.actionLog) == 0 or self.actionLog[-1].type == ActionType.BLOCK_NEXT):
                 self.executeAction(player, action)
 
             self.actionLog.append(action)
@@ -203,6 +211,8 @@ class Game:
         :param player: The player who does the action.
         :param action: The action to execute.
         """
+
+        print(player.getName(), action.type, action.actionData)
 
         if action.type == ActionType.EXIT:
             for marble in player.getMarbles():
@@ -223,41 +233,45 @@ class Game:
             self.players[action.actionData[1][0]].getMarbles()[action.actionData[1][1]].position = pos1
 
         elif action.type == ActionType.MOVE:
-            marblePositions = []
-            for play in self.players:
-                for marb in play.getMarbles():
-                    marblePositions.append(marb.position)
+            for step in action.actionData:
+                marblePositions = []
+                for play in self.players:
+                    for marb in play.getMarbles():
+                        marblePositions.append(marb.position)
 
-            freeSteps = 0
-            direction = 1
-            if action.actionData[1] < 0:
-                direction = -1
+                direction = 1
+                if step[1] < 0:
+                    direction = -1
 
-            marble = player.getMarbles()[action.actionData[0]]
-            startPosition = marble.position
-            houseEntrance = player.getID() * 16 + 1
-            for i in range(action.actionData[1] * direction):
-                pos = (startPosition + i * direction + self.RING_PLACES) % self.RING_PLACES + 1
-                if pos in marblePositions:
-                    return
+                marble = player.getMarbles()[step[0]]
+                if marble.position == 0:
+                    continue
 
-                if pos == houseEntrance and marble.activated:
-                    housePosition = action.actionData[1] * direction - i
-                    for ii in range(1, action.actionData[1] * direction - i):
-                        for marb in player.getMarbles():
-                            if marb.position == self.RING_PLACES + ii:
-                                housePosition = -1
-                                break
+                startPosition = marble.position
+                houseEntrance = player.getID() * 16 + 1
+                for i in range(1, abs(step[1])):
+                    pos = (startPosition + i * direction + self.RING_PLACES) % self.RING_PLACES + int((startPosition + i * direction) / self.RING_PLACES)
+                    if pos in marblePositions:
+                        return
+
+                    if pos == houseEntrance and marble.activated:
+                        housePosition = step[1] * direction - i
+                        for ii in range(1, step[1] * direction - i):
+                            for marb in player.getMarbles():
+                                if marb.position == self.RING_PLACES + ii:
+                                    housePosition = -1
+                                    break
                         
-                    if housePosition > 0:
-                        decision = input("Go in house?")
-                        if decision.lower() == "y":
-                            marble.position = self.RING_PLACES + housePosition
-                            return
+                        if housePosition > 0:
+                            decision = input("Go in house?")
+                            if decision.lower() == "y":
+                                marble.position = self.RING_PLACES + housePosition
+                                return
             
-            finalPos = (startPosition + action.actionData[1] + self.RING_PLACES) % self.RING_PLACES + 1
-            self.throw(finalPos)
-            marble.position = finalPos
+                finalPos = (startPosition + step[1] + self.RING_PLACES) % self.RING_PLACES + int((startPosition + i * direction) / self.RING_PLACES)
+                self.throw(finalPos)
+                marble.position = finalPos
+                marble.activated = True
 
 
         elif action.type == ActionType.TAC:
@@ -358,7 +372,7 @@ class Game:
                             marbleChar = "O"
                             for marble in self.players[1].getMarbles():
                                 if marble.position - 64 == houseIndex:
-                                    marbleChar = str(marble.index)
+                                    marbleChar = str(marble.index + 1)
 
                             character = self.players[1].getPlayerColor().value + marbleChar + Colors.RESET.value
 
@@ -366,7 +380,7 @@ class Game:
                             marbleChar = "O"
                             for marble in self.players[3].getMarbles():
                                 if marble.position - 64 == houseIndex:
-                                    marbleChar = str(marble.index)
+                                    marbleChar = str(marble.index + 1)
 
                             character = self.players[3].getPlayerColor().value + marbleChar + Colors.RESET.value
 
@@ -376,7 +390,7 @@ class Game:
                         if marble.position > 0 and marble.position <= 64:
                             if self.tableMarblePositions[marble.position] == (x, y):
                                 character = str(player.getPlayerColor().value)
-                                character += str(marble.index)
+                                character += str(marble.index + 1)
                                 character += str(Colors.RESET.value)
                                 break
                 

@@ -94,10 +94,10 @@ class Player:
         return self.playedByAI
     
     def setSignalOpeningCard(self, signalState: bool) -> None:
-        self.signalOpeningCard = signalState
+        self._signalOpeningCard = signalState
 
     def signalOpeningCardState(self) -> bool:
-        return self.signalOpeningCard
+        return self._signalOpeningCard
     
     def setMarbles(self, marbles: List[Marble]) -> None:
         self._marbles = marbles

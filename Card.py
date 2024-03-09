@@ -31,7 +31,7 @@ class Card:
             return Action(ActionType.MOVE, [(marble, 3)])
         elif self.type == CardType.IV:
             marble = int(input("Which marble do you want to move?")) - 1
-            return Action(ActionType.MOVE_BACK, [(marble, 4)])
+            return Action(ActionType.MOVE, [(marble, -4)])
         elif self.type == CardType.V:
             marble = int(input("Which marble do you want to move?")) - 1
             return Action(ActionType.MOVE, [(marble, 5)])
@@ -72,21 +72,24 @@ class Card:
             choice = input("Exit or move? [E, M]").upper()
             if choice == "E":
                 return Action(ActionType.EXIT)
+            
             else:
                 marble = int(input("Which marble do you want to move?")) - 1
                 return Action(ActionType.MOVE, [(marble, 13)])
+            
         elif self.type == CardType.Trickster:
-            marble = int(input("Which marble do you want to move?")) - 1
             playerString = ""
             for playerIndex, playerColor in enumerate(Colors):
                 if playerIndex == 4:
                     break
 
-                playerString += str(playerColor.value) + str(playerIndex) + str(Colors.RESET.value)
+                playerString += str(playerColor.value) + str(playerIndex + 1) + str(Colors.RESET.value)
 
-            playerTarget = int(input(f"Switch with which player? {playerString}"))
-            marbleTarget = int(input("To which other marble?")) - 1
-            return Action(ActionType.TRIX, [marble, playerTarget, marbleTarget])
+            playerSource = int(input(f"Player1? [1-4] {playerString} ")) - 1
+            marbleSource = int(input("Which marble do you want to move? ")) - 1
+            playerTarget = int(input(f"Player2? [1-4] {playerString} ")) - 1
+            marbleTarget = int(input("Which marble do you want to move? ")) - 1
+            return Action(ActionType.TRIX, [(playerSource, marbleSource), (playerTarget, marbleTarget)])
         elif self.type == CardType.TAC:
             return Action(ActionType.TAC, [])
         elif self.type == CardType.Fool:
