@@ -13,6 +13,7 @@ class ActionType(Enum):
     TAC = 4
     BLOCK_NEXT = 5
     THROW = 6
+    DISPOSE = 7
 
 class CardType(Enum):
     I = ("<--1", 9)
