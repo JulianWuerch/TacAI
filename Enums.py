@@ -7,13 +7,11 @@ class PlayerType(Enum):
 
 class ActionType(Enum):
     MOVE = 0
-    MOVE_BACK = 2
     EXIT = 1
-    TRIX = 3
-    TAC = 4
-    BLOCK_NEXT = 5
-    THROW = 6
-    DISPOSE = 7
+    TRIX = 2
+    TAC = 3
+    BLOCK_NEXT = 4
+    THROW = 5
 
 class CardType(Enum):
     I = ("<--1", 9)

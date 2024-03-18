@@ -47,7 +47,7 @@ class Card:
                 for _ in range(steps):
                     moves.append((marble, 1))
                     
-                freeSteps -= steps
+                freeSteps -= abs(steps)
             return Action(ActionType.MOVE, moves)
         elif self.type == CardType.VIII:
             choice = input("Block next Player or move? [B, M]").upper()

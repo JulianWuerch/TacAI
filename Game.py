@@ -198,6 +198,7 @@ class Game:
                 print("-Warning, you are blocked. Your Card will be discarded-")
 
             action = player.playCard()
+            action.playerAction = True
             if len(self.actionLog) == 0 or not (len(self.actionLog) == 0 or (self.actionLog[-1].type == ActionType.BLOCK_NEXT and self.actionLog[-1].used)):
                 self.executeAction(player, action)
                 action.used = True
@@ -288,11 +289,72 @@ class Game:
 
 
         elif action.type == ActionType.TAC:
-            pass
+            actionsToReverse = []
+            for backTrackAction in reversed(self.actionLog):
+                actionsToReverse.append(backTrackAction)
+                if backTrackAction.playerAction:
+                    break
+            
+            for revAction in actionsToReverse:
+                if revAction.used:
+                    self.reverseAction(revAction, (player.getID + self.PLAYER_COUNT - 1) % self.PLAYER_COUNT)
+                
 
         for play in self.players:
             for mar in play.getMarbles():
                 print(mar.position)
+
+    
+    def reverseAction(self, action: Action, playerID: int):
+        """
+        This function reverses actions as needed for the TAC action.
+
+        :param action: The action that is supposed to be returned.
+        :param playerID: The player who executed the action.
+        """
+        
+        if action.type == ActionType.EXIT:
+            self.throw(self.players[playerID].getMarbles()[action.actionData[0]].position)
+
+        elif action.type == ActionType.BLOCK_NEXT:
+            pass
+
+        elif action.type == ActionType.TRIX:
+            pos1 = self.players[action.actionData[0][0]].getMarbles()[action.actionData[0][1]].position
+            pos2 = self.players[action.actionData[1][0]].getMarbles()[action.actionData[1][1]].position
+
+            if 0 < pos1 < 65 and 0 < pos2 < 65:
+
+                self.players[action.actionData[0][0]].getMarbles()[action.actionData[0][1]].position = pos2
+                self.players[action.actionData[1][0]].getMarbles()[action.actionData[1][1]].position = pos1
+
+                self.players[action.actionData[0][0]].getMarbles()[action.actionData[0][1]].activated = True
+                self.players[action.actionData[1][0]].getMarbles()[action.actionData[1][1]].activated = True
+
+        elif action.type == ActionType.MOVE:
+            marbles = self.players[playerID].getMarbles()
+            for step in action.actionData:
+                position = marbles[step[0]].position
+                if 0 < position < 65:
+                    self.players[playerID].getMarbles()[step[0]].position = (position + self.RING_PLACES - step[1]) % self.RING_PLACES + (position - step[1]) / self.RING_PLACES
+                    
+                elif position == 0:
+                    pass
+
+                elif position > 64:
+                    if position - abs(step[1]) < 65:
+                        overshoot = position - 64 - step[1]
+                        houseEntry = playerID * 16 + 1
+                        newPos = (houseEntry - overshoot)
+
+                    else:
+                        newPos = position - step[1]
+
+                    self.players[playerID].getMarbles()[step[0]].position = newPos
+
+        elif action.type == ActionType.TAC:
+            pass
+
 
 
     def throw(self, position: int):
@@ -308,6 +370,7 @@ class Game:
                 if marble.position == position:
                     self.actionLog.append(Action(ActionType.THROW, [player.getID(), position]))
                     marble.position = 0
+                    marble.activated = False
 
 
     def checkWinnCondition(self) -> List[int]:
@@ -434,3 +497,4 @@ class Game:
                 line += character + " "
             
             print(line)
+
