@@ -300,10 +300,16 @@ class Game:
 
         elif action.type == ActionType.TAC:
             actionsToReverse = []
+            lastAction = False
             for backTrackAction in reversed(self.actionLog[0:-1]):
-                actionsToReverse.append(backTrackAction)
                 if backTrackAction.playerAction:
-                    break
+                    if lastAction:
+                        break
+
+                    else:
+                        lastAction = True
+
+                actionsToReverse.append(backTrackAction)
             
             actionsToReverse.reverse()
 
@@ -346,7 +352,8 @@ class Game:
         """
         
         if action.type == ActionType.EXIT:
-            self.throw(self.players[playerID].getMarbles()[action.actionData].position)
+            playerGate = 16 * action.actionData + 1
+            self.throw(playerGate)
 
         elif action.type == ActionType.BLOCK_NEXT:
             pass
@@ -402,6 +409,10 @@ class Game:
         elif action.type == ActionType.TAC:
             self.actionLog.append(Action(ActionType.REVERSE_ACTION, playerID, [action.type, action.actionData]))
             pass
+
+        elif action.type == ActionType.REVERSE_ACTION:
+            self.executeAction(action.playerID, action.actionData)
+            self.actionLog.append(action.actionData)
 
 
     def throw(self, position: int):
