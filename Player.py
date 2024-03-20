@@ -128,7 +128,9 @@ class Player:
         """
         Lets the player choose which card he wants to give away in the traiding state at the start of each round.
         """
-        return self.getHandCards().pop(0)
+        
+        #return self.getHandCards().pop(0)
+        
         random = Random()
         if self.playedByAI:
             return self.getHandCards().pop(random.randint(0, len(self.getHandCards())))

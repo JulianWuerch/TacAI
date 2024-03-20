@@ -85,7 +85,7 @@ class Game:
                 self.shuffleCardDeck()
 
             self.dishCards()
-            self.debugCards()
+            #self.debugCards()
             self.reportExitCard()
             self.tradeCards()
 
@@ -205,7 +205,7 @@ class Game:
                 action.used = suc
             
             elif action.type == ActionType.TAC:
-                if input("Use Tac to prevent block?").lower() == "y":
+                if input("Use Tac to prevent block? [Y, N]").lower() == "y":
                     suc = self.executeAction(player, action)
                     action.used = suc
 
@@ -336,7 +336,7 @@ class Game:
                                     break
                         
                         if housePosition > 0 and housePosition < 5:
-                            decision = input("Go in house?")
+                            decision = input("Go in house? [Y, N]")
                             if decision.lower() == "y":
                                 finalPos = self.RING_PLACES + housePosition
                                 finalPositions.append([playerID, step[0], finalPos])

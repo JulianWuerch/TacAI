@@ -9,4 +9,4 @@ while toDo == "yes" or toDo == "y":
     game = Game()
     game.start()
 
-    toDo = input("Start new game?\n")
+    toDo = input("Start new game? [yes, no]\n")
