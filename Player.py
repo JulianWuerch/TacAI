@@ -158,3 +158,14 @@ class Player:
 
         print(handCards)
     
+
+    def compleat(self) -> bool:
+        """
+        Checks if the player has all marbles in his house.
+        """
+        
+        for marble in self.getMarbles():
+            if marble.position < 65:
+                return False
+        
+        return True

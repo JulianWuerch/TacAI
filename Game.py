@@ -92,7 +92,6 @@ class Game:
             for round in range(self.HAND_SIZE):
                 self.playRound(round)
                 self.roundCounter += 1
-                self.winnerTeam = self.checkWinnCondition()
 
             if self.winnerTeam:
                 self.celebrateTeam(self.winnerTeam)
@@ -202,35 +201,48 @@ class Game:
             action.playerAction = True
             self.actionLog.append(action)
             if len(self.actionLog) == 0 or not (len(self.actionLog) == 0 or (self.actionLog[-1].type == ActionType.BLOCK_NEXT and self.actionLog[-1].used)):
-                self.executeAction(player, action)
-                action.used = True
+                suc = self.executeAction(player, action)
+                action.used = suc
+            
+            elif action.type == ActionType.TAC:
+                if input("Use Tac to prevent block?").lower() == "y":
+                    suc = self.executeAction(player, action)
+                    action.used = suc
 
             self.printGame()
             for entry in self.actionLog:
                 print(entry.type, entry.actionData)
 
 
-    def executeAction(self, player: Player, action: Action) -> None:
+            self.winnerTeam = self.checkWinnCondition((player.getID() % 2))
+
+
+    def executeAction(self, player: Player, action: Action) -> bool:
         """
         Executes an action. Moves marbles and requests additional input from the player if nessecary.
         Checks if the action is possible and moves marbles acordingly.
 
         :param player: The player who does the action.
         :param action: The action to execute.
+        :return: If the eaction was performed sucessfully.
         """
 
         print(player.getName(), action.type, action.actionData)
+        playerID = player.getID()
+        if player.compleat():
+            playerID = (playerID + 2) % 4
 
         if action.type == ActionType.EXIT:
-            for marble in player.getMarbles():
+            for marble in self.players[playerID].getMarbles():
                 if marble.position == 0:
-                    position = 16 * player.getID() + 1
+                    position = 16 * playerID + 1
                     self.throw(position)
                     marble.position = position
+                    return True
                     break
 
         elif action.type == ActionType.BLOCK_NEXT:
-            pass
+            return True
 
         elif action.type == ActionType.TRIX:
             pos1 = self.players[action.actionData[0][0]].getMarbles()[action.actionData[0][1]].position
@@ -250,9 +262,29 @@ class Game:
                 self.players[action.actionData[0][0]].getMarbles()[action.actionData[0][1]].activated = True
                 self.players[action.actionData[1][0]].getMarbles()[action.actionData[1][1]].activated = True
 
+                return True
 
         elif action.type == ActionType.MOVE:
+            finalPositions = []
+            allSuccessfull = True
             for step in action.actionData:
+                if not allSuccessfull:
+                    break
+
+                selfCompleat = True
+                for marble in self.players[playerID].getMarbles():
+                    if marble.position < 65:
+                        willBeMoved = False
+                        for targPos in finalPositions:
+                            if targPos[0] == player.getID() and targPos[1] == marble.index and targPos[2] > 64:
+                                willBeMoved = True
+
+                        selfCompleat = willBeMoved
+                        break
+
+                if selfCompleat:
+                    playerID = (player.getID() + 2) % 4
+
                 marblePositions = []
                 for play in self.players:
                     for marb in play.getMarbles():
@@ -262,26 +294,43 @@ class Game:
                 if step[1] < 0:
                     direction = -1
 
-                marble = player.getMarbles()[step[0]]
+                marble = self.players[playerID].getMarbles()[step[0]]
                 startingInHouse = marble.position > 64
                 if marble.position == 0 or (startingInHouse and direction < 0) or (startingInHouse and marble.position + step[1] > 68):
+                    allSuccessfull = False
                     continue
 
-
                 startPosition = marble.position
-                houseEntrance = player.getID() * 16 + 1
+
+                if startingInHouse:
+                    freePos = True
+                    for i in range(1, step[1]):
+                        pos = marblePositions + i
+                        for marb in self.players[playerID].getMarbles():
+                            if marb.position == pos:
+                                freePos = False
+                                allSuccessfull = False
+                                break
+
+                    if freePos:
+                        finalPos = startPosition + step[1]
+                        finalPositions.append([playerID, step[0], finalPos])
+                        continue
+
+                houseEntrance = playerID * 16 + 1
                 i = 0
+                finalPos = None
                 for i in range(1, abs(step[1])):
                     pos = (startPosition + i * direction + self.RING_PLACES) % self.RING_PLACES + int((startPosition + i * direction) / self.RING_PLACES)
                     if pos == 0:
                         pos = 64
                     if pos in marblePositions:
-                        return
+                        allSuccessfull = False
 
                     if pos == houseEntrance and marble.activated:
                         housePosition = step[1] * direction - i
                         for ii in range(1, step[1] * direction - i):
-                            for marb in player.getMarbles():
+                            for marb in self.players[playerID].getMarbles():
                                 if marb.position == self.RING_PLACES + ii:
                                     housePosition = -1
                                     break
@@ -289,14 +338,23 @@ class Game:
                         if housePosition > 0 and housePosition < 5:
                             decision = input("Go in house?")
                             if decision.lower() == "y":
-                                marble.position = self.RING_PLACES + housePosition
-                                return
+                                finalPos = self.RING_PLACES + housePosition
+                                finalPositions.append([playerID, step[0], finalPos])
+                                break
             
-                finalPos = (startPosition + step[1] + self.RING_PLACES) % self.RING_PLACES + int((startPosition + i * direction) / self.RING_PLACES)
-                self.throw(finalPos)
-                marble.position = finalPos
-                marble.activated = True
+                if not finalPos:
+                    finalPos = (startPosition + step[1] + self.RING_PLACES) % self.RING_PLACES + int((startPosition + i * direction) / self.RING_PLACES)
+                    finalPositions.append([playerID, step[0], finalPos])
 
+            if allSuccessfull:
+                for pos in finalPositions:
+                    marble = self.players[pos[0]].getMarbles()[pos[1]]
+                    finalPos = pos[2]
+                    self.throw(finalPos)
+                    marble.position = finalPos
+                    marble.activated = True
+                
+                return True
 
         elif action.type == ActionType.TAC:
             actionsToReverse = []
@@ -316,28 +374,27 @@ class Game:
             actionToDo = None
 
             for revAction in actionsToReverse:
-                self.reverseAction(revAction, revAction.playerID)
-                if not revAction.type == ActionType.TAC:
-                    actionToDo = revAction
+                if revAction.used:
+                    self.reverseAction(revAction, revAction.playerID)
+                    if not revAction.type == ActionType.TAC:
+                        actionToDo = revAction
             
 
             if actionToDo is not None:
                 
                 playerCard = Card(actionToDo.cardType)
-                playerAction = playerCard.executeCard(player.getID())
-                self.executeAction(player, playerAction)
-                playerAction.used = True
+                playerAction = playerCard.executeCard(playerID)
+                suc = self.executeAction(self.players[playerID], playerAction)
+                playerAction.used = suc
                 playerAction.playerAction = True
 
                 self.actionLog.append(playerAction)
                 self.printGame()
+
                 for entry in self.actionLog:
                     print(entry.type, entry.actionData)
 
-
-        for play in self.players:
-            for mar in play.getMarbles():
-                print(mar.position)
+                return suc
 
     def reverseActionBlock(self, actions: List[Action]):
         pass
@@ -364,6 +421,7 @@ class Game:
                     mar.position = action.actionData[1]
                     mar.activated = action.actionData[2]
                     self.actionLog.append(Action(ActionType.REVERSE_ACTION, playerID, [action.type, action.actionData]))
+                    self.actionLog[-1].used = True
                     break
 
         elif action.type == ActionType.TRIX:
@@ -382,13 +440,18 @@ class Game:
                     self.players[action.actionData[1][0]].getMarbles()[action.actionData[1][1]].activated = False
 
             self.actionLog.append(Action(ActionType.REVERSE_ACTION, playerID, [action.type, action.actionData]))
+            self.actionLog[-1].used = True
 
         elif action.type == ActionType.MOVE:
             marbles = self.players[playerID].getMarbles()
             for step in action.actionData:
                 position = marbles[step[0]].position
                 if 0 < position < 65:
-                    self.players[playerID].getMarbles()[step[0]].position = (position + self.RING_PLACES - step[1]) % self.RING_PLACES + int((position - step[1]) / self.RING_PLACES)
+                    pos = (position + self.RING_PLACES - step[1]) % self.RING_PLACES
+                    if pos == 0:
+                        pos = 64
+
+                    self.players[playerID].getMarbles()[step[0]].position = pos
                     
                 elif position == 0:
                     pass
@@ -405,14 +468,18 @@ class Game:
                     self.players[playerID].getMarbles()[step[0]].position = newPos
 
             self.actionLog.append(Action(ActionType.REVERSE_ACTION, playerID, [action.type, action.actionData]))
+            self.actionLog[-1].used = True
 
         elif action.type == ActionType.TAC:
             self.actionLog.append(Action(ActionType.REVERSE_ACTION, playerID, [action.type, action.actionData]))
+            self.actionLog[-1].used = True
             pass
 
         elif action.type == ActionType.REVERSE_ACTION:
-            self.executeAction(action.playerID, action.actionData)
-            self.actionLog.append(action.actionData)
+            actionToReverse = Action(action.actionData[0], action.playerID, action.actionData[1])
+            suc = self.executeAction(self.players[action.playerID], actionToReverse)
+            actionToReverse.used = suc
+            self.actionLog.append(actionToReverse)
 
 
     def throw(self, position: int):
@@ -429,17 +496,22 @@ class Game:
                     self.actionLog.append(Action(ActionType.THROW, player.getID(), [player.getID(), position, marble.activated]))
                     marble.position = 0
                     marble.activated = False
+                    self.actionLog[-1].used = True
 
 
-    def checkWinnCondition(self) -> List[int]:
+    def checkWinnCondition(self, playerGroup: int) -> List[int]:
         """
         Checks wherether a team has all marbles in its houses.
 
+        :playerGroup: Which group can win at the moment.
         :return: The indecies of the players if a team won as list.
         """
 
         finished = []
         for playerIndex, player in enumerate(self.players):
+            if (playerIndex % 2) != playerGroup:
+                continue
+
             playerFinished = True
             for marble in player.getMarbles():
                 if marble.position < self.RING_PLACES:
