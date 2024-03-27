@@ -6,6 +6,9 @@ class Marble:
     index: int
 
     def __init__(self, index: int):
+        """
+        Constructor of Marble.
+        """
         self.position = 0
         self.activated = False
         self.index = index
