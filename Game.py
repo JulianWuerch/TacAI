@@ -11,7 +11,7 @@ from Player import Player
 class Game:
     
     PLAYER_COUNT = 4
-    HAND_SIZE = 5
+    HAND_SIZE = 5 # when played master-version then in every last round 6 cards
     MARBLE_COUNT = 4
     RING_PLACES = 64
     roundCounter: int
